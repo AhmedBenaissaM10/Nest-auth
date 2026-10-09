@@ -1,9 +1,11 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
-export class RegisterDto {
+export class LoginDto {
   @IsEmail()
-  @Transform(({ value }) => typeof value == 'string' ? value.toLowerCase() : value,)
+  @Transform(({ value }) =>
+    typeof value == 'string' ? value.toLowerCase() : value,
+  )
   email: string;
 
   @IsString()

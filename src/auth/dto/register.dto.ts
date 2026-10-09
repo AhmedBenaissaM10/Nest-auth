@@ -4,8 +4,8 @@ import { IsEmail, IsString, Length, Matches } from 'class-validator';
 export class RegisterDto {
   @IsString()
   @Length(2, 50)
-  name: string
-  
+  name: string;
+
   @IsEmail()
   @Transform(({ value }) =>
     typeof value == 'string' ? value.toLowerCase() : value,
