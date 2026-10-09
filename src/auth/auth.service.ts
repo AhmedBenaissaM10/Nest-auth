@@ -1,10 +1,14 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Env } from '../config/env.js';
 import { UsersService } from '../users/users.service.js';
 import { RegisterDto } from './dto/register.dto.js';
-import * as argon2  from 'argon2';
+import * as argon2 from 'argon2';
 import { LoginDto } from './dto/login.dto.js';
 import { User } from '../generated/prisma/client.js';
 
@@ -19,7 +23,7 @@ export class AuthService {
     const existing = await this.users.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already in use');
     const passwordHash = await argon2.hash(dto.password);
-    const user  = await this.users.create({
+    const user = await this.users.create({
       name: dto.name,
       email: dto.email,
       passwordHash,
