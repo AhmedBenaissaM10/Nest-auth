@@ -6,20 +6,15 @@ import { ConfigService } from '@nestjs/config';
 import { Env } from './config/env.js';
 import { ResponseInterceptor } from './common/interceptors/response/response.interceptor.js';
 import { Logger } from 'nestjs-pino';
+import cookieParser from 'cookie-parser';
+import { configureApp } from './app.setup.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  configureApp(app);
+  app.use(cookieParser());
   const config = app.get<ConfigService<Env, true>>(ConfigService);
-  app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-  app.useGlobalInterceptors(new ResponseInterceptor());
   await app.listen(config.get('PORT', { infer: true }));
 }
 await bootstrap();
