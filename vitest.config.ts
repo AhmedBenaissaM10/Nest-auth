@@ -1,13 +1,14 @@
+import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
-  // Resolves the path aliases declared in tsconfig.json, including the ones
-  // added by `nest g library`.
-  plugins: [tsconfigPaths()],
   test: {
-    globals: true,
     root: './',
-    include: ['**/*.spec.ts'],
+    include: ['test/**/*.e2e-spec.ts'],
+    fileParallelism: false,
+    testTimeout: 15000,
+    hookTimeout: 30000,
+    env: { NODE_ENV: 'test' },
   },
+  plugins: [swc.vite({ module: { type: 'es6' } })],
 });

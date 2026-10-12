@@ -10,14 +10,19 @@ import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test.local' : '.env',
+      validate: validateEnv,
+    }),
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => {
-        const isProd = config.get('NODE_ENV', { infer: true }) === 'production';
+        const env = config.get('NODE_ENV', { infer: true });
+        const isProd = env === 'production';
         return {
           pinoHttp: {
-            level: isProd ? 'info' : 'debug',
+            level: env === 'test' ? 'silent' : isProd ? 'info' : 'debug',
             transport: isProd
               ? undefined
               : { target: 'pino-pretty', options: { singleLine: true } },
