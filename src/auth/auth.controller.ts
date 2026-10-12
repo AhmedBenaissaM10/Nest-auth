@@ -20,6 +20,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import type { AuthUser } from './types/auth-user.js';
 import { SessionMeta } from './types/tokens.js';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +31,7 @@ export class AuthController {
 
   @Public()
   @Post('signup')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async signup(
     @Body() dto: RegisterDto,
     @Req() req: Request,
@@ -44,6 +46,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -60,6 +63,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(

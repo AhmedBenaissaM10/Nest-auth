@@ -10,6 +10,7 @@ export const envSchema = z
     DATABASE_URL: z.string().min(1),
     JWT_ACCESS_SECRET: z.string().min(20),
     JWT_REFRESH_SECRET: z.string().min(20),
+    THROTTLE_DISABLED: z.stringbool().default(false),
   })
   .refine((env) => env.JWT_ACCESS_SECRET !== env.JWT_REFRESH_SECRET, {
     message: 'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different',

@@ -1,13 +1,10 @@
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
-import { AllExceptionsFilter } from './common/filters/all-exceptions/all-exceptions.filter.js';
 import { ConfigService } from '@nestjs/config';
-import { Env } from './config/env.js';
-import { ResponseInterceptor } from './common/interceptors/response/response.interceptor.js';
-import { Logger } from 'nestjs-pino';
+import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import { Logger } from 'nestjs-pino';
+import { AppModule } from './app.module.js';
 import { configureApp } from './app.setup.js';
+import { Env } from './config/env.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
