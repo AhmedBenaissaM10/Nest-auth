@@ -10,18 +10,35 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  ApiBearerAuth,
+  ApiCookieAuth,
+  ApiNoContentResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import {
+  ApiEnvelope,
+  ApiErrors,
+} from '../common/swagger/api-docs.decorator.js';
 import { Env } from '../config/env.js';
 import { REFRESH_COOKIE, REFRESH_TOKEN_TTL_SECONDS } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { Public } from './decorators/public.decorator.js';
+import {
+  AccessTokenDto,
+  AuthResultDto,
+  CurrentUserDto,
+} from './dto/auth-response.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import type { AuthUser } from './types/auth-user.js';
 import { SessionMeta } from './types/tokens.js';
-import { Throttle } from '@nestjs/throttler';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -30,8 +47,15 @@ export class AuthController {
   ) {}
 
   @Public()
-  @Post('signup')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('signup')
+  @ApiOperation({
+    summary: 'Create an account',
+    description:
+      'Creates the user, opens a session and sets the refresh token in an httpOnly cookie.',
+  })
+  @ApiEnvelope(AuthResultDto, { status: 201 })
+  @ApiErrors(400, 409, 429)
   async signup(
     @Body() dto: RegisterDto,
     @Req() req: Request,
@@ -49,6 +73,13 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Log in',
+    description:
+      'Opens a new session and sets the refresh token in an httpOnly cookie.',
+  })
+  @ApiEnvelope(AuthResultDto)
+  @ApiErrors(400, 401, 429)
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
@@ -66,6 +97,14 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth('refresh-cookie')
+  @ApiOperation({
+    summary: 'Get a new access token',
+    description:
+      'Reads the refresh token from the cookie, rotates it (new cookie) and returns a new access token. Reusing an old refresh token revokes all sessions of the user.',
+  })
+  @ApiEnvelope(AccessTokenDto)
+  @ApiErrors(401, 429)
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -84,12 +123,23 @@ export class AuthController {
   }
   @Public()
   @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiCookieAuth('refresh-cookie')
+  @ApiOperation({
+    summary: 'Log out',
+    description: 'Revokes the current session and clears the refresh cookie.',
+  })
+  @ApiNoContentResponse({ description: 'Session revoked, cookie cleared' })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
     await this.authService.logout(token);
     this.clearRefreshCookie(res);
   }
   @Get('profile')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get the current user (from the access token)' })
+  @ApiEnvelope(CurrentUserDto)
+  @ApiErrors(401)
   profile(@CurrentUser() user: AuthUser) {
     return user;
   }
