@@ -1,15 +1,14 @@
 import { Controller, Get, Param } from '@nestjs/common';
-import { Role } from '../generated/prisma/client.js';
-import { PublicUser, UsersService } from './users.service.js';
-import { Roles } from '../auth/decorators/roles.decorator.js';
-import { AuthUser } from '../auth/types/auth-user.js';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { PublicUserDto } from '../auth/dto/auth-response.dto.js';
 import {
   ApiEnvelope,
   ApiErrors,
 } from '../common/swagger/api-docs.decorator.js';
+import { Role } from '../generated/prisma/client.js';
 import { UserListItemDto } from './dto/list-users.dto.js';
-import { PublicUserDto } from '../auth/dto/auth-response.dto.js';
+import { PublicUser, UsersService } from './users.service.js';
 
 @ApiTags('Users')
 @ApiBearerAuth('access-token')

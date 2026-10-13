@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -24,6 +26,8 @@ import {
   ApiErrors,
 } from '../common/swagger/api-docs.decorator.js';
 import { Env } from '../config/env.js';
+import { UpdateProfileDto } from '../users/dto/update-profile.dto.js';
+import { PublicUser, UsersService } from '../users/users.service.js';
 import { REFRESH_COOKIE, REFRESH_TOKEN_TTL_SECONDS } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
@@ -32,17 +36,21 @@ import {
   AccessTokenDto,
   AuthResultDto,
   CurrentUserDto,
+  PublicUserDto,
 } from './dto/auth-response.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import type { AuthUser } from './types/auth-user.js';
 import { SessionMeta } from './types/tokens.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { DeleteAccountDto } from './dto/delete-account.dto.js';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly users: UsersService,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
@@ -121,6 +129,7 @@ export class AuthController {
       throw error;
     }
   }
+
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -135,7 +144,8 @@ export class AuthController {
     await this.authService.logout(token);
     this.clearRefreshCookie(res);
   }
-  @Get('profile')
+
+  @Get('me')
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get the current user (from the access token)' })
   @ApiEnvelope(CurrentUserDto)
@@ -143,6 +153,80 @@ export class AuthController {
   profile(@CurrentUser() user: AuthUser) {
     return user;
   }
+
+  @Get('profile')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Get my profile',
+    description:
+      'Returns the profile of the logged-in user, read from the database.',
+  })
+  @ApiEnvelope(PublicUserDto)
+  @ApiErrors(401, 404)
+  getProfile(@CurrentUser() user: AuthUser): Promise<PublicUser> {
+    return this.users.findProfileById(user.id);
+  }
+
+  @Patch('profile')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Update my profile',
+    description: 'A user can only change their own name.',
+  })
+  @ApiEnvelope(PublicUserDto)
+  @ApiErrors(400, 401, 404)
+  updateProfile(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<PublicUser> {
+    return this.users.updateProfile(user.id, dto);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Change my password',
+    description:
+      'Requires the current password. Revokes every session (all devices), then opens a new one for this device.',
+  })
+  @ApiEnvelope(AccessTokenDto)
+  @ApiErrors(400, 401, 404, 429)
+  async changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken } = await this.authService.changePassword(
+      user.id,
+      dto,
+      this.getMeta(req),
+    );
+    this.setRefreshCookie(res, refreshToken);
+    return { accessToken };
+  }
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Delete('account')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Delete my account',
+    description:
+      'Requires the password. Deletes the user and all their sessions, and clears the refresh cookie.',
+  })
+  @ApiNoContentResponse({ description: 'Account deleted' })
+  @ApiErrors(400, 401, 404, 429)
+  async deleteAccount(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: DeleteAccountDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.deleteAccount(user.id, dto);
+    this.clearRefreshCookie(res);
+  }
+
   private getMeta(req: Request): SessionMeta {
     return { ip: req.ip, userAgent: req.headers['user-agent'] };
   }

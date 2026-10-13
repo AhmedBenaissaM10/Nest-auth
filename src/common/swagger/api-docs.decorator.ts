@@ -46,8 +46,10 @@ const ERROR_DESCRIPTIONS: Record<number, string> = {
   400: 'Validation failed',
   401: 'Missing, invalid or expired credentials',
   403: 'Not allowed for your role',
+  404: 'User not found',
   409: 'Conflict',
   429: 'Too many requests',
+  503: 'A dependency (database) is not reachable',
 };
 
 export const ApiErrors = (...statuses: number[]) =>

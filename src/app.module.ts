@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { Env, validateEnv } from './config/env.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsersModule } from './users/users.module.js';
+import { HealthModule } from './health/health.module.js';
 
 @Module({
   imports: [
@@ -33,6 +34,9 @@ import { UsersModule } from './users/users.module.js';
               'req.headers.cookie',
               'res.headers["set-cookie"]',
             ],
+            autoLogging: {
+              ignore: (req) => req.url?.startsWith('/health') ?? false,
+            },
           },
         };
       },
@@ -47,6 +51,7 @@ import { UsersModule } from './users/users.module.js';
     AuthModule,
     UsersModule,
     PrismaModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

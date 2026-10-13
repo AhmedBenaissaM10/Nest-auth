@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -18,6 +19,8 @@ import {
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { RefreshPayload, SessionMeta, TokenPair } from './types/tokens.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { DeleteAccountDto } from './dto/delete-account.dto.js';
 
 const sha256 = (value: string) =>
   createHash('sha256').update(value).digest('hex');
@@ -96,6 +99,37 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
   }
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+    meta: SessionMeta,
+  ): Promise<TokenPair> {
+    const user = await this.users.findByIdOrThrow(userId);
+
+    if (!(await argon2.verify(user.passwordHash, dto.currentPassword))) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException(
+        'New password must be different from the current one',
+      );
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash },
+      }),
+      this.prisma.session.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return this.createSession(user, meta);
+  }
   private async createSession(
     user: User,
     meta: SessionMeta,
@@ -114,7 +148,15 @@ export class AuthService {
     });
     return tokens;
   }
+  async deleteAccount(userId: string, dto: DeleteAccountDto): Promise<void> {
+    const user = await this.users.findByIdOrThrow(userId);
 
+    if (!(await argon2.verify(user.passwordHash, dto.password))) {
+      throw new BadRequestException('Password is incorrect');
+    }
+
+    await this.users.delete(userId);
+  }
   private async signTokens(user: User, sid: string): Promise<TokenPair> {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwt.signAsync(

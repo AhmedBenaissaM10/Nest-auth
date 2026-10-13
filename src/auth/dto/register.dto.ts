@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsString, Length, Matches } from 'class-validator';
 import { ToLowerCase } from '../../common/decorators/tolowercase.decorator.js';
+import { Trim } from '../../common/decorators/trim.decorator.js';
 
 export class RegisterDto {
   @ApiProperty({
@@ -11,6 +12,7 @@ export class RegisterDto {
   })
   @IsString()
   @Length(2, 50)
+  @Trim()
   name: string;
 
   @ApiProperty({ format: 'email', example: 'user@example.com' })
