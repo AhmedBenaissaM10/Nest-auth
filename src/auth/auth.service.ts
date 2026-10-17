@@ -21,6 +21,7 @@ import { RegisterDto } from './dto/register.dto.js';
 import { RefreshPayload, SessionMeta, TokenPair } from './types/tokens.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { DeleteAccountDto } from './dto/delete-account.dto.js';
+import { OAuthProfile } from './types/oauth-profile.js';
 
 const sha256 = (value: string) =>
   createHash('sha256').update(value).digest('hex');
@@ -49,7 +50,11 @@ export class AuthService {
   }
   async login(dto: LoginDto, meta: SessionMeta) {
     const user = await this.users.findByEmail(dto.email);
-    if (!user || !(await argon2.verify(user.passwordHash, dto.password)))
+    if (
+      !user ||
+      !user?.passwordHash ||
+      !(await argon2.verify(user.passwordHash, dto.password))
+    )
       throw new UnauthorizedException('Invalid credentials');
 
     const tokens = await this.createSession(user, meta);
@@ -57,6 +62,25 @@ export class AuthService {
       user: this.toPublicUser(user),
       ...tokens,
     };
+  }
+  async loginWithOAuth(
+    profile: OAuthProfile,
+    meta: SessionMeta,
+  ): Promise<TokenPair> {
+    const linked = await this.users.findByOAuthAccount(
+      profile.provider,
+      profile.providerAccountId,
+    );
+    if (linked) return this.createSession(linked, meta);
+
+    if (await this.users.findByEmail(profile.email)) {
+      throw new ConflictException(
+        'An account with this email already exists. Log in with your password.',
+      );
+    }
+
+    const user = await this.users.createWithOAuth(profile);
+    return this.createSession(user, meta);
   }
   async refresh(refreshToken: string): Promise<TokenPair> {
     const payload = await this.verifyRefreshToken(refreshToken);
@@ -105,7 +129,11 @@ export class AuthService {
     meta: SessionMeta,
   ): Promise<TokenPair> {
     const user = await this.users.findByIdOrThrow(userId);
-
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'This account has no password (it signs in with Google)',
+      );
+    }
     if (!(await argon2.verify(user.passwordHash, dto.currentPassword))) {
       throw new BadRequestException('Current password is incorrect');
     }
@@ -151,10 +179,14 @@ export class AuthService {
   async deleteAccount(userId: string, dto: DeleteAccountDto): Promise<void> {
     const user = await this.users.findByIdOrThrow(userId);
 
-    if (!(await argon2.verify(user.passwordHash, dto.password))) {
-      throw new BadRequestException('Password is incorrect');
+    if (user.passwordHash) {
+      if (
+        !dto.password ||
+        !(await argon2.verify(user.passwordHash, dto.password))
+      ) {
+        throw new BadRequestException('Password is incorrect');
+      }
     }
-
     await this.users.delete(userId);
   }
   private async signTokens(user: User, sid: string): Promise<TokenPair> {

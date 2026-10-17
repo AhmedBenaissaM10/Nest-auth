@@ -10,13 +10,17 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  UseFilters,
+  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ApiBearerAuth,
   ApiCookieAuth,
+  ApiExcludeEndpoint,
   ApiNoContentResponse,
   ApiOperation,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -38,12 +42,15 @@ import {
   CurrentUserDto,
   PublicUserDto,
 } from './dto/auth-response.dto.js';
-import { LoginDto } from './dto/login.dto.js';
-import { RegisterDto } from './dto/register.dto.js';
-import type { AuthUser } from './types/auth-user.js';
-import { SessionMeta } from './types/tokens.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { DeleteAccountDto } from './dto/delete-account.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { RegisterDto } from './dto/register.dto.js';
+import { OAuthRedirectFilter } from './filters/google-redirect.filter.js';
+import { GoogleAuthGuard } from './guards/google-auth.guard.js';
+import type { AuthUser } from './types/auth-user.js';
+import { OAuthProfile } from './types/oauth-profile.js';
+import { SessionMeta } from './types/tokens.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -235,10 +242,40 @@ export class AuthController {
       httpOnly: true,
       secure: this.config.get('NODE_ENV', { infer: true }) === 'production',
       sameSite: 'strict' as const,
-      path: '/auth',
+      path: 'api/auth',
     };
   }
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  @Get('google')
+  @ApiOperation({
+    summary: 'Sign in with Google',
+    description:
+      'Open this URL in the browser (not with fetch). Redirects to Google, then back to the callback.',
+  })
+  @ApiResponse({ status: 302, description: 'Redirect to Google' })
+  googleAuth() {}
 
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  @UseFilters(OAuthRedirectFilter)
+  @Get('google/callback')
+  @ApiExcludeEndpoint()
+  async googleCallBack(@Req() req: Request, @Res() res: Response) {
+    const { refreshToken } = await this.authService.loginWithOAuth(
+      req.user as OAuthProfile,
+      this.getMeta(req),
+    );
+    this.setRefreshCookie(res, refreshToken);
+    res.redirect(
+      new URL(
+        'auth/callback',
+        this.config.get('FRONTEND_URL', { infer: true }),
+      ).toString(),
+    );
+  }
+
+  // private Methods
   private setRefreshCookie(res: Response, token: string) {
     res.cookie(REFRESH_COOKIE, token, {
       ...this.cookieOptions(),

@@ -79,6 +79,34 @@ export class UsersService {
       throw error;
     }
   }
+  async findByOAuthAccount(provider: string, providerAccountId: string) {
+    const account = await this.prisma.oAuthAccount.findUnique({
+      where: { provider_providerAccountId: { provider, providerAccountId } },
+      include: { user: true },
+    });
+
+    return account?.user ?? null;
+  }
+
+  createWithOAuth(data: {
+    email: string;
+    name: string;
+    provider: string;
+    providerAccountId: string;
+  }) {
+    return this.prisma.user.create({
+      data: {
+        email: data.email.toLowerCase(),
+        name: data.name,
+        oauthAccounts: {
+          create: {
+            provider: data.provider,
+            providerAccountId: data.providerAccountId,
+          },
+        },
+      },
+    });
+  }
   private isRecordNotFound(error: unknown): boolean {
     return (
       typeof error === 'object' &&
