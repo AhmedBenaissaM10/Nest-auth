@@ -9,9 +9,10 @@ import { setupSwagger } from './swagger.setup.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', { exclude: ['health/live', 'health/ready'] });
   app.useLogger(app.get(Logger));
   configureApp(app);
+  app.enableShutdownHooks();
   setupSwagger(app);
   app.use(cookieParser());
   const config = app.get<ConfigService<Env, true>>(ConfigService);

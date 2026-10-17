@@ -19,12 +19,6 @@ FROM base AS prod-deps
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
-# ---- Migrations (one-off job, not the app) ----
-FROM deps AS migrate
-COPY prisma ./prisma
-COPY prisma.config.ts ./
-CMD ["npx", "prisma", "migrate", "deploy"]
-
 # ---- Runner ----
 FROM base AS runner
 ENV NODE_ENV=production
