@@ -78,7 +78,7 @@ export class GoogleAuthGuard extends AuthGuard('google') {
       httpOnly: true,
       secure: this.config.get('NODE_ENV', { infer: true }) === 'production',
       sameSite: 'lax' as const,
-      path: 'api/auth/google',
+      path: '/api/auth/google',
     };
   }
 }

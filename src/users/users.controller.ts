@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { PublicUserDto } from '../auth/dto/auth-response.dto.js';
@@ -26,10 +26,10 @@ export class UsersController {
   }
   @Roles(Role.ADMIN)
   @Get(':id')
-  @ApiOperation({ summary: 'user by id (ADMIN only)' })
+  @ApiOperation({ summary: 'Get a user by id (ADMIN only)' })
   @ApiEnvelope(PublicUserDto, { isArray: false })
-  @ApiErrors(401, 403, 404)
-  findById(@Param('id') id: string) {
-    return this.users.findById(id);
+  @ApiErrors(400, 401, 403, 404)
+  findById(@Param('id', ParseUUIDPipe) id: string): Promise<PublicUser> {
+    return this.users.getUserById(id);
   }
 }

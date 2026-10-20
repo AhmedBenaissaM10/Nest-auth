@@ -242,7 +242,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.config.get('NODE_ENV', { infer: true }) === 'production',
       sameSite: 'strict' as const,
-      path: 'api/auth',
+      path: '/api/auth',
     };
   }
   @Public()

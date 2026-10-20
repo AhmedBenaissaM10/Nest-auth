@@ -9,6 +9,7 @@ import type { NextFunction, Request, Response } from 'express';
 
 export function configureApp(app: INestApplication) {
   const config = app.get<ConfigService<Env, true>>(ConfigService);
+  app.setGlobalPrefix('api', { exclude: ['health/live', 'health/ready'] });
   const strictHelmet = helmet();
   const docsHelmet = helmet({
     contentSecurityPolicy: {

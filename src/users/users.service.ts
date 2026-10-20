@@ -8,6 +8,13 @@ export type PublicUser = Pick<
   User,
   'id' | 'email' | 'name' | 'role' | 'createdAt'
 >;
+const PUBLIC_USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  createdAt: true,
+} as const;
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -16,6 +23,16 @@ export class UsersService {
   }
   findById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
+  }
+  async getUserById(id: string): Promise<PublicUser> {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: PUBLIC_USER_SELECT,
+    });
+
+    if (!user) throw new UserNotFoundException();
+
+    return user;
   }
   async findByIdOrThrow(id: string) {
     const user = await this.findById(id);
