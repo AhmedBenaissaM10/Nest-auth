@@ -157,7 +157,8 @@ describe('GET /api/auth/google/callback (e2e)', () => {
       `${frontendUrl()}/login?error=account_exists`,
     );
 
-    const cookies = (res.headers['set-cookie'] as string[] | undefined) ?? [];
+    const cookies =
+      (res.headers['set-cookie'] as unknown as string[] | undefined) ?? [];
     expect(cookies.some((c) => c.startsWith('refresh_token='))).toBe(false);
 
     expect(await t.prisma.user.count()).toBe(1);
