@@ -1,63 +1,97 @@
-name: CI Pipeline
+name: CD Render
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
+
+concurrency:
+  group: cd-render
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
-    deploy:
-        runs-on: ubuntu-latest
-        if: github.ref == 'refs/heads/main'
-        steps:
-            - name: Trigger Render deploy
-              id: trigger
-              run: |
-                    response=$(curl -s -f -X POST \
-                        --url "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
-                        --header "Accept: application/json" \
-                        --header "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}")
-                    deploy_id=$(echo "$response" | jq -r '.id')
-                    echo "Triggered deploy: $deploy_id"
-                    echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 25
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      RENDER_API: https://api.render.com/v1
 
-            - name: Wait for deploy to go live
-              run: |
-                    deploy_id="${{ steps.trigger.outputs.deploy_id }}"
-                    timeout=300
-                    interval=10
-                    elapsed=0
+    steps:
+      - name: Trigger Render deploy
+        id: trigger
+        run: |
+          response=$(curl -sS --fail -X POST \
+            "$RENDER_API/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Accept: application/json" \
+            -H "Authorization: Bearer $RENDER_API_KEY")
 
-                    while [ "$elapsed" -lt "$timeout" ]; do
-                        status=$(curl -s \
-                        --url "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys/$deploy_id" \
-                        --header "Accept: application/json" \
-                        --header "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" | jq -r '.status')
+          deploy_id=$(echo "$response" | jq -r '.id // empty')
 
-                        echo "Current status: $status"
+          if [ -z "$deploy_id" ]; then
+            echo "Render did not return a deploy id."
+            exit 1
+          fi
 
-                        if [ "$status" = "live" ]; then
-                        echo "Deploy succeeded."
-                        exit 0
-                        fi
+          echo "Triggered deploy: $deploy_id"
+          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
 
-                        case "$status" in
-                        build_failed|update_failed|canceled|deactivated)
-                            echo "Deploy failed with status: $status"
-                            exit 1
-                            ;;
-                        esac
+      - name: Wait for deploy to go live
+        env:
+          DEPLOY_ID: ${{ steps.trigger.outputs.deploy_id }}
+        run: |
+          timeout=900
+          interval=10
+          elapsed=0
 
-                        sleep "$interval"
-                        elapsed=$((elapsed + interval))
-                    done
+          while [ "$elapsed" -lt "$timeout" ]; do
+            status=$(curl -sS --fail --retry 3 \
+              "$RENDER_API/services/$RENDER_SERVICE_ID/deploys/$DEPLOY_ID" \
+              -H "Accept: application/json" \
+              -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.status // empty')
+            : "${status:=unknown}"
 
-                    echo "Timed out after ${timeout}s waiting for deploy."
-                    exit 1
-            - name: Get service URL
-              run: |
-                service_url=$(curl -s \
-                    --url "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}" \
-                    --header "Accept: application/json" \
-                    --header "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" | jq -r '.serviceDetails.url')
+            echo "[${elapsed}s] Current status: $status"
 
-                echo "🚀 Deployed to: $service_url" >> "$GITHUB_STEP_SUMMARY"
-                echo "service_url=$service_url" >> "$GITHUB_OUTPUT"
+            case "$status" in
+              live)
+                echo "Deploy succeeded."
+                exit 0
+                ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "Deploy failed with status: $status"
+                exit 1
+                ;;
+            esac
+
+            sleep "$interval"
+            elapsed=$((elapsed + interval))
+          done
+
+          echo "Timed out after ${timeout}s waiting for deploy."
+          exit 1
+
+      - name: Get service URL
+        id: service
+        run: |
+          service_url=$(curl -sS --fail \
+            "$RENDER_API/services/$RENDER_SERVICE_ID" \
+            -H "Accept: application/json" \
+            -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.serviceDetails.url // empty')
+
+          if [ -z "$service_url" ]; then
+            echo "Could not read the service URL."
+            exit 1
+          fi
+
+          echo "service_url=$service_url" >> "$GITHUB_OUTPUT"
+          echo "Deployed to: $service_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test
+        env:
+          SERVICE_URL: ${{ steps.service.outputs.service_url }}
+        run: |
+          curl -sS --fail --retry 10 --retry-delay 6 --retry-all-errors \
+            "$SERVICE_URL/health/ready"
