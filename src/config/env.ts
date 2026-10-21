@@ -8,6 +8,7 @@ export const envSchema = z
     PORT: z.coerce.number().int().positive().default(3000),
     FRONTEND_URL: z.url().default('http://localhost:5173'),
     DATABASE_URL: z.string().min(1),
+    REDIS_URL: z.string().min(1),
     JWT_ACCESS_SECRET: z.string().min(20),
     JWT_REFRESH_SECRET: z.string().min(20),
     THROTTLE_DISABLED: z.stringbool().default(false),

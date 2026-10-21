@@ -155,7 +155,12 @@ export default async () => {
         ],
         [
           import('./users/users.controller.js'),
-          { UsersController: { findAll: { type: [Object] }, findById: {} } },
+          {
+            UsersController: {
+              findAll: { type: [Object] },
+              findById: { type: Object },
+            },
+          },
         ],
         [
           import('./health/health.controller.js'),
@@ -163,6 +168,7 @@ export default async () => {
             HealthController: {
               live: { type: Object },
               ready: { type: Object },
+              redisStatus: { type: Object },
             },
           },
         ],

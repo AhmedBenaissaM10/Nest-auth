@@ -5,6 +5,7 @@ import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { ApiErrors } from '../common/swagger/api-docs.decorator.js';
 import { DatabaseHealthIndicator } from './database.health.js';
+import { RedisHealthIndicator } from './redis.health.js';
 
 @ApiTags('Health')
 @Public()
@@ -14,6 +15,7 @@ export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
     private readonly db: DatabaseHealthIndicator,
+    private readonly redis: RedisHealthIndicator,
   ) {}
 
   @Get('live')
@@ -38,5 +40,10 @@ export class HealthController {
   @ApiErrors(503)
   ready() {
     return this.health.check([() => this.db.isHealthy('database')]);
+  }
+  @Get('redis')
+  @HealthCheck()
+  redisStatus() {
+    return this.health.check([() => this.redis.isHealthy('redis')]);
   }
 }

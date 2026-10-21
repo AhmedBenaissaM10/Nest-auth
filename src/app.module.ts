@@ -10,6 +10,7 @@ import { Env, validateEnv } from './config/env.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsersModule } from './users/users.module.js';
 import { HealthModule } from './health/health.module.js';
+import { RedisModule } from './redis/redis.module.js';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { HealthModule } from './health/health.module.js';
     UsersModule,
     PrismaModule,
     HealthModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
