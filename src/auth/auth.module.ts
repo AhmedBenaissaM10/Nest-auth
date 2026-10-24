@@ -9,14 +9,17 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
 import { GoogleStrategy } from './strategies/google.strategy.js';
+import { MailModule } from '../mail/mail.module.js';
+import { OtpService } from './otp.service.js';
 
 @Module({
-  imports: [UsersModule, PassportModule, JwtModule.register({})],
+  imports: [UsersModule, MailModule, PassportModule, JwtModule.register({})],
   controllers: [AuthController],
   providers: [
     AuthService,
     JwtStrategy,
     GoogleStrategy,
+    OtpService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

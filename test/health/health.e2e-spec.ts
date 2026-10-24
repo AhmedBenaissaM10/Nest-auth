@@ -27,6 +27,7 @@ describe('Health checks (e2e)', () => {
   it('is not served under the /api prefix', async () => {
     await t.api.http().get('/api/health/live').expect(404);
     await t.api.http().get('/api/health/ready').expect(404);
+    await t.api.http().get('/api/health/redis').expect(404);
   });
 
   it('does not leak connection details', async () => {

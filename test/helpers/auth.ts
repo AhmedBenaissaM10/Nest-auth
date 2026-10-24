@@ -88,5 +88,9 @@ export function authRequests(app: INestApplication) {
       const req = http().get(`/api/users/${id}`);
       return token ? req.set('Authorization', `Bearer ${token}`) : req;
     },
+    forgotPassword: (body: Record<string, unknown> = {}) =>
+      http().post('/api/auth/forgot-password').send(body),
+    resetPassword: (body: Record<string, unknown> = {}) =>
+      http().post('/api/auth/reset-password').send(body),
   };
 }

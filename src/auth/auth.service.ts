@@ -16,12 +16,15 @@ import {
   ACCESS_TOKEN_TTL,
   REFRESH_TOKEN_TTL_SECONDS,
 } from './auth.constants.js';
-import { LoginDto } from './dto/login.dto.js';
-import { RegisterDto } from './dto/register.dto.js';
-import { RefreshPayload, SessionMeta, TokenPair } from './types/tokens.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { DeleteAccountDto } from './dto/delete-account.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { RegisterDto } from './dto/register.dto.js';
+import { OtpService } from './otp.service.js';
 import { OAuthProfile } from './types/oauth-profile.js';
+import { RefreshPayload, SessionMeta, TokenPair } from './types/tokens.js';
+import { MailService } from '../mail/mail.service.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
 const sha256 = (value: string) =>
   createHash('sha256').update(value).digest('hex');
@@ -31,6 +34,8 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+    private readonly otp: OtpService,
     private readonly config: ConfigService<Env, true>,
   ) {}
   async register(dto: RegisterDto, meta: SessionMeta) {
@@ -158,6 +163,40 @@ export class AuthService {
 
     return this.createSession(user, meta);
   }
+  async forgotPassword(email: string) {
+    if (!(await this.otp.acquireCooldown('reset-password', email))) return;
+
+    const user = await this.users.findByEmail(email);
+    if (!user) return;
+
+    const code = await this.otp.generate('reset-password', email);
+
+    try {
+      await this.mail.sendOtp(email, code);
+    } catch {
+      await this.otp.remove('reset-password', email);
+    }
+  }
+  async resetPassword(dto: ResetPasswordDto) {
+    const valid = await this.otp.verify('reset-password', dto.email, dto.code);
+
+    if (!valid) throw new BadRequestException('Invalid or expired code');
+
+    const user = await this.users.findByEmail(dto.email);
+    if (!user) throw new BadRequestException('Invalid or expired code');
+
+    const hashed = await argon2.hash(dto.newPassword);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: hashed },
+    });
+
+    await this.prisma.session.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+  // private methods
   private async createSession(
     user: User,
     meta: SessionMeta,

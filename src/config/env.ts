@@ -15,6 +15,11 @@ export const envSchema = z
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
     GOOGLE_CALLBACK_URL: z.url(),
+    SMTP_HOST: z.string(),
+    SMTP_PORT: z.coerce.number().default(587),
+    SMTP_USER: z.string(),
+    SMTP_PASS: z.string(),
+    MAIL_FROM: z.string().default('Auth App <no-reply@example.com>'),
   })
   .refine((env) => env.JWT_ACCESS_SECRET !== env.JWT_REFRESH_SECRET, {
     message: 'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different',

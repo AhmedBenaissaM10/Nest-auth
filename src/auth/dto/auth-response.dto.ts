@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
 import { Role } from '../../generated/prisma/client.js';
 
 export class PublicUserDto {
@@ -46,4 +47,11 @@ export class CurrentUserDto {
 
   @ApiProperty({ enum: Role, enumName: 'Role', example: Role.USER })
   role: Role;
+}
+
+export class AuthMessageResponseDto {
+  @ApiProperty({ example: 'Password has been reset successfully.' })
+  @IsString()
+  @IsNotEmpty()
+  message!: string;
 }

@@ -38,14 +38,17 @@ import { CurrentUser } from './decorators/current-user.decorator.js';
 import { Public } from './decorators/public.decorator.js';
 import {
   AccessTokenDto,
+  AuthMessageResponseDto,
   AuthResultDto,
   CurrentUserDto,
   PublicUserDto,
 } from './dto/auth-response.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { DeleteAccountDto } from './dto/delete-account.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { OAuthRedirectFilter } from './filters/google-redirect.filter.js';
 import { GoogleAuthGuard } from './guards/google-auth.guard.js';
 import type { AuthUser } from './types/auth-user.js';
@@ -274,7 +277,40 @@ export class AuthController {
       ).toString(),
     );
   }
-
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Request a password reset code',
+    description:
+      'Sends a 6-digit one-time code to the given email if an account exists for it. The code expires after 10 minutes, and a new one can be requested after 60 seconds. The response is always the same, whether or not the email is registered, so it cannot be used to find out which emails have accounts.',
+  })
+  @ApiEnvelope(AuthMessageResponseDto)
+  @ApiErrors(400, 429)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.authService.forgotPassword(dto.email);
+    return {
+      message: 'If an account exists for this email, a code has been sent.',
+    };
+  }
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  @ApiOperation({
+    summary: 'Reset password with code',
+    description:
+      'Sets a new password using the 6-digit code sent by the forgot-password endpoint. The code is single-use, expires after 10 minutes, and is invalidated after 5 wrong attempts. All existing sessions are revoked after a successful reset.',
+  })
+  @ApiEnvelope(AuthMessageResponseDto)
+  @ApiErrors(400, 429)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto);
+    return {
+      message: 'Password has been reset successfully.',
+    };
+  }
   // private Methods
   private setRefreshCookie(res: Response, token: string) {
     res.cookie(REFRESH_COOKIE, token, {

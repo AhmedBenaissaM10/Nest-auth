@@ -30,5 +30,6 @@ export function setupSwagger(app: INestApplication) {
 
   SwaggerModule.setup('docs', app, buildOpenApiDocument(app), {
     swaggerOptions: { persistAuthorization: true },
+    yamlDocumentUrl: 'docs/openapi.yml',
   });
 }

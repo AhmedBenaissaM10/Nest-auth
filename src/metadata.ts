@@ -41,6 +41,28 @@ export default async () => {
           },
         ],
         [
+          import('./auth/dto/change-password.dto.js'),
+          {
+            ChangePasswordDto: {
+              currentPassword: { required: true, type: () => String },
+              newPassword: {
+                required: true,
+                type: () => String,
+                minLength: 8,
+                maxLength: 128,
+              },
+            },
+          },
+        ],
+        [
+          import('./auth/dto/delete-account.dto.js'),
+          {
+            DeleteAccountDto: {
+              password: { required: true, type: () => String },
+            },
+          },
+        ],
+        [
           import('./auth/dto/login.dto.js'),
           {
             LoginDto: {
@@ -71,24 +93,23 @@ export default async () => {
           },
         ],
         [
-          import('./auth/dto/change-password.dto.js'),
+          import('./auth/dto/reset-password.dto.js'),
           {
-            ChangePasswordDto: {
-              currentPassword: { required: true, type: () => String },
+            ResetPasswordDto: {
+              email: { required: true, type: () => String, format: 'email' },
+              code: {
+                required: true,
+                type: () => String,
+                minLength: 6,
+                maxLength: 6,
+              },
               newPassword: {
                 required: true,
                 type: () => String,
                 minLength: 8,
-                maxLength: 128,
+                maxLength: 100,
+                pattern: '^(?=.*[a-z])(?=.*[A-S])(?=.*\\d).*$',
               },
-            },
-          },
-        ],
-        [
-          import('./auth/dto/delete-account.dto.js'),
-          {
-            DeleteAccountDto: {
-              password: { required: true, type: () => String },
             },
           },
         ],
@@ -114,6 +135,17 @@ export default async () => {
             CurrentUserDto: {
               id: { required: true, type: () => String },
               role: { required: true, enum: ['USER', 'ADMIN'] },
+            },
+            AuthMessageResponseDto: {
+              message: { required: true, type: () => String },
+            },
+          },
+        ],
+        [
+          import('./auth/dto/forgot-password.dto.js'),
+          {
+            ForgotPasswordDto: {
+              email: { required: true, type: () => String, format: 'email' },
             },
           },
         ],
@@ -150,6 +182,8 @@ export default async () => {
               deleteAccount: {},
               googleAuth: {},
               googleCallBack: {},
+              forgotPassword: {},
+              resetPassword: {},
             },
           },
         ],

@@ -1,0 +1,1310 @@
+openapi: 3.0.0
+paths:
+  /api:
+    get:
+      operationId: AppController_getHello
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+        - App
+  /api/auth/signup:
+    post:
+      description: >-
+        Creates the user, opens a session and sets the refresh token in an
+        httpOnly cookie.
+      operationId: AuthController_signup
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AuthResultDto'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      summary: Create an account
+      tags:
+        - Auth
+  /api/auth/login:
+    post:
+      description: Opens a new session and sets the refresh token in an httpOnly cookie.
+      operationId: AuthController_login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AuthResultDto'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      summary: Log in
+      tags:
+        - Auth
+  /api/auth/refresh:
+    post:
+      description: >-
+        Reads the refresh token from the cookie, rotates it (new cookie) and
+        returns a new access token. Reusing an old refresh token revokes all
+        sessions of the user.
+      operationId: AuthController_refresh
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AccessTokenDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - refresh-cookie: []
+      summary: Get a new access token
+      tags:
+        - Auth
+  /api/auth/logout:
+    post:
+      description: Revokes the current session and clears the refresh cookie.
+      operationId: AuthController_logout
+      parameters: []
+      responses:
+        '204':
+          description: Session revoked, cookie cleared
+      security:
+        - refresh-cookie: []
+      summary: Log out
+      tags:
+        - Auth
+  /api/auth/me:
+    get:
+      operationId: AuthController_profile
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/CurrentUserDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - access-token: []
+      summary: Get the current user (from the access token)
+      tags:
+        - Auth
+  /api/auth/profile:
+    get:
+      description: Returns the profile of the logged-in user, read from the database.
+      operationId: AuthController_getProfile
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/PublicUserDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - access-token: []
+      summary: Get my profile
+      tags:
+        - Auth
+    patch:
+      description: A user can only change their own name.
+      operationId: AuthController_updateProfile
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/PublicUserDto'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - access-token: []
+      summary: Update my profile
+      tags:
+        - Auth
+  /api/auth/change-password:
+    post:
+      description: >-
+        Requires the current password. Revokes every session (all devices), then
+        opens a new one for this device.
+      operationId: AuthController_changePassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AccessTokenDto'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - access-token: []
+      summary: Change my password
+      tags:
+        - Auth
+  /api/auth/account:
+    delete:
+      description: >-
+        Requires the password. Deletes the user and all their sessions, and
+        clears the refresh cookie.
+      operationId: AuthController_deleteAccount
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountDto'
+      responses:
+        '204':
+          description: Account deleted
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - access-token: []
+      summary: Delete my account
+      tags:
+        - Auth
+  /api/auth/google:
+    get:
+      description: >-
+        Open this URL in the browser (not with fetch). Redirects to Google, then
+        back to the callback.
+      operationId: AuthController_googleAuth
+      parameters: []
+      responses:
+        '302':
+          description: Redirect to Google
+      summary: Sign in with Google
+      tags:
+        - Auth
+  /api/auth/forgot-password:
+    post:
+      description: >-
+        Sends a 6-digit one-time code to the given email if an account exists
+        for it. The code expires after 10 minutes, and a new one can be
+        requested after 60 seconds. The response is always the same, whether or
+        not the email is registered, so it cannot be used to find out which
+        emails have accounts.
+      operationId: AuthController_forgotPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AuthMessageResponseDto'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      summary: Request a password reset code
+      tags:
+        - Auth
+  /api/auth/reset-password:
+    post:
+      description: >-
+        Sets a new password using the 6-digit code sent by the forgot-password
+        endpoint. The code is single-use, expires after 10 minutes, and is
+        invalidated after 5 wrong attempts. All existing sessions are revoked
+        after a successful reset.
+      operationId: AuthController_resetPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AuthMessageResponseDto'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      summary: Reset password with code
+      tags:
+        - Auth
+  /api/users:
+    get:
+      operationId: UsersController_findAll
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserListItemDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '403':
+          description: Not allowed for your role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - access-token: []
+      summary: List all users (ADMIN only)
+      tags:
+        - Users
+  /api/users/{id}:
+    get:
+      operationId: UsersController_findById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelopeDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/PublicUserDto'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '401':
+          description: Missing, invalid or expired credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '403':
+          description: Not allowed for your role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+      security:
+        - access-token: []
+      summary: Get a user by id (ADMIN only)
+      tags:
+        - Users
+  /health/live:
+    get:
+      description: Answers 200 as long as the process is running. Checks no dependency.
+      operationId: HealthController_live
+      parameters: []
+      responses:
+        '200':
+          description: |-
+            The process is alive
+
+            The Health Check is successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                      - degraded
+                    example: ok
+                  info:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example: {}
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+        '503':
+          description: The Health Check is not successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                      - shutting_down
+                    example: error
+                  info:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example:
+                      redis:
+                        status: down
+                        message: Could not connect
+                        responseTime: 3005
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                      redis:
+                        status: down
+                        message: Could not connect
+                        responseTime: 3005
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+      summary: Liveness probe
+      tags:
+        - Health
+  /health/ready:
+    get:
+      description: Answers 200 only if the app can reach the database.
+      operationId: HealthController_ready
+      parameters: []
+      responses:
+        '200':
+          description: |-
+            The app is ready to receive traffic
+
+            The Health Check is successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                      - degraded
+                    example: ok
+                  info:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example: {}
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+        '503':
+          description: |-
+            A dependency (database) is not reachable
+
+            The Health Check is not successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                      - shutting_down
+                    example: error
+                  info:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example:
+                      redis:
+                        status: down
+                        message: Could not connect
+                        responseTime: 3005
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                      redis:
+                        status: down
+                        message: Could not connect
+                        responseTime: 3005
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+      summary: Readiness probe
+      tags:
+        - Health
+  /health/redis:
+    get:
+      operationId: HealthController_redisStatus
+      parameters: []
+      responses:
+        '200':
+          description: The Health Check is successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                      - degraded
+                    example: ok
+                  info:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example: {}
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+        '503':
+          description: The Health Check is not successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                      - shutting_down
+                    example: error
+                  info:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example:
+                      redis:
+                        status: down
+                        message: Could not connect
+                        responseTime: 3005
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example:
+                      database:
+                        status: up
+                        responseTime: 12
+                      redis:
+                        status: down
+                        message: Could not connect
+                        responseTime: 3005
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+      tags:
+        - Health
+info:
+  title: Auth API
+  description: >-
+    Authentication API: short-lived access token in the Authorization header,
+    rotating refresh token in an httpOnly cookie.
+  version: 1.0.0
+  contact: {}
+tags: []
+servers: []
+components:
+  securitySchemes:
+    access-token:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+    refresh-cookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+  schemas:
+    ErrorResponseDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        statusCode:
+          type: number
+          example: 400
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          example:
+            - email must be an email
+        path:
+          type: string
+          example: /auth/register
+        method:
+          type: string
+          example: POST
+        timestamp:
+          type: string
+          example: '2026-10-12T22:00:00.000Z'
+      required:
+        - success
+        - statusCode
+        - message
+        - path
+        - method
+        - timestamp
+    SuccessEnvelopeDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        statusCode:
+          type: number
+          example: 200
+        path:
+          type: string
+          example: /auth/login
+        method:
+          type: string
+          example: POST
+        timestamp:
+          type: string
+          example: '2026-10-12T22:00:00.000Z'
+      required:
+        - success
+        - statusCode
+        - path
+        - method
+        - timestamp
+    Role:
+      type: string
+      enum:
+        - USER
+        - ADMIN
+    PublicUserDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 3f6c1c2e-8a1b-4d0e-9f3a-2b7c5d9e1a44
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: ahmed@example.com
+        role:
+          example: USER
+          allOf:
+            - $ref: '#/components/schemas/Role'
+      required:
+        - id
+        - name
+        - email
+        - role
+    AuthResultDto:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/PublicUserDto'
+        accessToken:
+          type: string
+          description: >-
+            JWT access token (15 minutes). Send it as "Authorization: Bearer
+            <token>".
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      required:
+        - user
+        - accessToken
+    RegisterDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          maxLength: 100
+          example: StrongPass123
+      required:
+        - name
+        - email
+        - password
+    LoginDto:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          example: StrongPass123
+      required:
+        - email
+        - password
+    AccessTokenDto:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: New JWT access token (15 minutes).
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      required:
+        - accessToken
+    CurrentUserDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 3f6c1c2e-8a1b-4d0e-9f3a-2b7c5d9e1a44
+        role:
+          example: USER
+          allOf:
+            - $ref: '#/components/schemas/Role'
+      required:
+        - id
+        - role
+    UpdateProfileDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: John Doe
+      required:
+        - name
+    ChangePasswordDto:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          example: StrongPass123
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          example: EvenStronger456
+      required:
+        - currentPassword
+        - newPassword
+    DeleteAccountDto:
+      type: object
+      properties:
+        password:
+          type: string
+          description: >-
+            Current password, to confirm the deletion. Required for accounts
+            that have a password.
+          example: StrongPass123
+      required:
+        - password
+    AuthMessageResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Password has been reset successfully.
+      required:
+        - message
+    ForgotPasswordDto:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+      required:
+        - email
+    ResetPasswordDto:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        code:
+          type: string
+          example: '123456'
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 100
+          example: StrongPass123
+      required:
+        - email
+        - code
+        - newPassword
+    UserListItemDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 3f6c1c2e-8a1b-4d0e-9f3a-2b7c5d9e1a44
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: ahmed@example.com
+        role:
+          example: USER
+          allOf:
+            - $ref: '#/components/schemas/Role'
+        createdAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - role
+        - createdAt
