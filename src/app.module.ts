@@ -12,6 +12,8 @@ import { UsersModule } from './users/users.module.js';
 import { HealthModule } from './health/health.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { MailModule } from './mail/mail.module.js';
+import { RedisService } from './redis/redis.service.js';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 
 @Module({
   imports: [
@@ -44,10 +46,11 @@ import { MailModule } from './mail/mail.module.js';
       },
     }),
     ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>) => ({
+      inject: [ConfigService, RedisService],
+      useFactory: (config: ConfigService<Env, true>, redis: RedisService) => ({
         throttlers: [{ ttl: 60_000, limit: 100 }],
         skipIf: () => config.get('THROTTLE_DISABLED', { infer: true }),
+        storage: new ThrottlerStorageRedisService(redis.client),
       }),
     }),
     AuthModule,

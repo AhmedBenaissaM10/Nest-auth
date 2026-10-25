@@ -23,6 +23,12 @@ describe('Health checks (e2e)', () => {
     expect(res.body.data.status).toBe('ok');
     expect(res.body.data.info.database.status).toBe('up');
   });
+  it('GET /health/redis returns 200 and reports redis as up', async () => {
+    const res = await t.api.http().get('/health/redis').expect(200);
+
+    expect(res.body.data.status).toBe('ok');
+    expect(res.body.data.info.redis.status).toBe('up');
+  });
 
   it('is not served under the /api prefix', async () => {
     await t.api.http().get('/api/health/live').expect(404);
