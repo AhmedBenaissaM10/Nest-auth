@@ -14,7 +14,7 @@ import { RedisModule } from './redis/redis.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { RedisService } from './redis/redis.service.js';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
-
+import { join } from 'node:path';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -27,12 +27,35 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
       useFactory: (config: ConfigService<Env, true>) => {
         const env = config.get('NODE_ENV', { infer: true });
         const isProd = env === 'production';
+        const logDir = 'logs';
         return {
           pinoHttp: {
             level: env === 'test' ? 'silent' : isProd ? 'info' : 'debug',
-            transport: isProd
-              ? undefined
-              : { target: 'pino-pretty', options: { singleLine: true } },
+            transport:
+              env === 'test'
+                ? undefined
+                : {
+                    targets: [
+                      isProd
+                        ? { target: 'pino/file', options: { destination: 1 } }
+                        : {
+                            target: 'pino-pretty',
+                            options: { singleLine: true },
+                          },
+                      {
+                        target: 'pino-roll',
+                        options: {
+                          file: join(logDir, 'app'),
+                          extension: '.log',
+                          dateFormat: 'yyyy-MM-dd',
+                          frequency: 'daily',
+                          size: '10m',
+                          limit: { count: 14 },
+                          mkdir: true,
+                        },
+                      },
+                    ],
+                  },
             redact: [
               'req.headers.authorization',
               'req.headers.cookie',
